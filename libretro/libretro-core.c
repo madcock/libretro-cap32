@@ -1435,7 +1435,11 @@ void retro_init(void)
 
    LOGI("Retro SYSTEM_DIRECTORY %s\n", retro_system_directory);
    LOGI("Retro SAVE_DIRECTORY %s\n", retro_save_directory);
+#if !defined(SF2000)
    LOGI("Retro CONTENT_DIRECTORY %s\n", retro_content_directory);
+#else
+   // retro_content_directory is NULL!
+#endif
 
    // events initialize - joy and keyboard
    ev_init();
