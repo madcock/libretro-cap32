@@ -1660,10 +1660,17 @@ void loadConfiguration (void)
    CPC.scr_window = getConfigValueInt(chFileName, "video", "scr_window", 0) & 1;
 
    CPC.snd_enabled = getConfigValueInt(chFileName, "sound", "enabled", 1) & 1;
+#if !defined(SF2000)
    CPC.snd_playback_rate = getConfigValueInt(chFileName, "sound", "playback_rate", 2);
    if (CPC.snd_playback_rate > (MAX_FREQ_ENTRIES-1)) {
       CPC.snd_playback_rate = 2;
    }
+#else
+   CPC.snd_playback_rate = getConfigValueInt(chFileName, "sound", "playback_rate", 0);
+   if (CPC.snd_playback_rate > (MAX_FREQ_ENTRIES-1)) {
+      CPC.snd_playback_rate = 0;
+   }
+#endif
    CPC.snd_bits = getConfigValueInt(chFileName, "sound", "bits", 1) & 1;
    CPC.snd_stereo = getConfigValueInt(chFileName, "sound", "stereo", 1) & 1;
    CPC.snd_volume = getConfigValueInt(chFileName, "sound", "volume", 80);
