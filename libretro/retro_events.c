@@ -184,7 +184,11 @@ t_button_cfg btnPAD[MAX_PADCFG] = {
 
 // ---------------------------------------------
 
+#if !defined(SF2000)
 #define MAX_JOY_EVENT 9
+#else
+#define MAX_JOY_EVENT 11
+#endif
 static retro_combo_event_t events_combo[MAX_JOY_EVENT] =
 {
    { RETRO_DEVICE_ID_JOYPAD_B,            // if you change this position, update JOY_EVENT_ID_B
@@ -205,6 +209,12 @@ static retro_combo_event_t events_combo[MAX_JOY_EVENT] =
       { EVENT_WRITE, "4\nS\n", "PRESSED => 4/S" } },
    { RETRO_DEVICE_ID_JOYPAD_RIGHT,
       { EVENT_WRITE, "3\nJ\n", "PRESSED => 3/J" } },
+#if defined(SF2000)
+   { RETRO_DEVICE_ID_JOYPAD_L,
+	  { EVENT_SWAP_MEDIA_PREV, "PREV", NULL} },
+   { RETRO_DEVICE_ID_JOYPAD_R,
+	  { EVENT_SWAP_MEDIA_NEXT, "NEXT", NULL} },
+#endif
 };
 
 /**
@@ -270,6 +280,10 @@ void ev_cursorjoy() {
  **/
 static unsigned do_action(const retro_action_t* action)
 {
+#if defined(SF2000)
+   unsigned mediatotal = 0;
+   unsigned mediaindex = 0;
+#endif
    switch(action->type) {
       case EVENT_WRITE:
          // TODO: generate an internal command for this behaivor
@@ -295,6 +309,44 @@ static unsigned do_action(const retro_action_t* action)
       case EVENT_CURSOR_JOY:
          ev_cursorjoy();
          break;
+#if defined(SF2000)
+      case EVENT_SWAP_MEDIA_PREV:
+         mediatotal = retro_get_num_images() - 1;
+         if (mediatotal > 1)
+         {
+             mediaindex = retro_get_image_index();
+             if (retro_set_eject_state(true))
+             {
+                 mediaindex--;
+                 mediaindex = (mediaindex < 0) ? 0 : mediaindex;
+                 if (retro_set_image_index(mediaindex))
+                 {
+                     retro_set_eject_state(false);
+                     retro_ui_update_text();
+					 retro_show_statusbar();
+                 }
+             }
+         }
+         break;
+      case EVENT_SWAP_MEDIA_NEXT:
+         mediatotal = retro_get_num_images() - 1;
+         if (mediatotal > 1)
+         {
+             mediaindex = retro_get_image_index();
+             if (retro_set_eject_state(true))
+             {
+                 mediaindex++;
+                 mediaindex = (mediaindex == mediatotal) ? 0 : mediaindex;
+                 if (retro_set_image_index(mediaindex))
+                 {
+                     retro_set_eject_state(false);
+                     retro_ui_update_text();
+					 retro_show_statusbar();
+                 }
+             }
+         }
+         break;
+#endif
    }
 
    if(action->message)

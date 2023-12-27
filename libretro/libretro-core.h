@@ -118,7 +118,11 @@ extern unsigned amstrad_devices[ PORTS_NUMBER ];
 #define FRAME_PERIOD_MS        20.0 // check cap32.h
 #define AUDIO_BYTES 2
 #define AUDIO_CHANNELS 2
+#if !defined(SF2000)
 #define AUDIO_SAMPLE_SIZE 44100
+#else
+#define AUDIO_SAMPLE_SIZE 11025
+#endif
 #define AUDIO_BUFSIZE (AUDIO_SAMPLE_SIZE * FRAME_PERIOD_MS / 1000)
 
 //LOG

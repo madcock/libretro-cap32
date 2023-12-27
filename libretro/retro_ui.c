@@ -54,6 +54,10 @@
 #include "retro_keyboard.h"
 #include "assets/assets.h"
 
+#if defined(SF2000)
+#include "retro_disk_control.h"
+#endif
+
 extern t_CPC CPC; 
 
 extern uint32_t * video_buffer;
@@ -272,6 +276,24 @@ void retro_ui_update_text()
       ui_string,
       retro_video.rgb2color(0x63, 0x63, 0x63)
    );
+#if defined(SF2000)
+   snprintf(
+      ui_string,
+      sizeof(ui_string),
+      "%s%d",
+      (get_image_unit() == DC_IMAGE_TYPE_FLOPPY) ? "DISK " : "TAPE ",
+      (retro_get_image_index() + 1)
+   );
+   draw_text(
+      keyboard_surface,
+      retro_video.screen_crop
+         ? 182 * EMULATION_SCALE
+         : 150 * EMULATION_SCALE,
+      UI_STRING_Y,
+      ui_string,
+      retro_video.rgb2color(0xce, 0xcf, 0x00)
+   );
+#endif
 }
 
 void retro_ui_draw_db(void)

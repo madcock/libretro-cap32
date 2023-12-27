@@ -847,7 +847,11 @@ void retro_reset(void)
 //*****************************************************************************
 // Disk control
 
+#if !defined(SF2000)
 static int get_image_unit()
+#else
+int get_image_unit()
+#endif
 {
    int unit = dc->unit;
    if (dc->index < dc->count)
@@ -900,7 +904,11 @@ static void retro_insert_image()
    }
 }
 
+#if !defined(SF2000)
 static bool retro_set_eject_state(bool ejected)
+#else
+bool retro_set_eject_state(bool ejected)
+#endif
 {
    if (dc)
    {
@@ -943,7 +951,11 @@ static bool retro_get_eject_state(void)
    return true;
 }
 
+#if !defined(SF2000)
 static unsigned retro_get_image_index(void)
+#else
+unsigned retro_get_image_index(void)
+#endif
 {
    if (dc)
       return dc->index;
@@ -955,7 +967,11 @@ static unsigned retro_get_image_index(void)
  * The implementation supports setting "no disk" by using an
  * index >= get_num_images().
  */
+#if !defined(SF2000)
 static bool retro_set_image_index(unsigned index)
+#else
+bool retro_set_image_index(unsigned index)
+#endif
 {
    // Insert image
    if (dc)
@@ -981,7 +997,11 @@ static bool retro_set_image_index(unsigned index)
    return false;
 }
 
+#if !defined(SF2000)
 static unsigned retro_get_num_images(void)
+#else
+unsigned retro_get_num_images(void)
+#endif
 {
    if (dc)
       return dc->count;
@@ -1545,7 +1565,11 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
    info->geometry.aspect_ratio = 24.0 / 17.0;
 
    info->timing.fps = CPC_TIMING;
+#if !defined(SF2000)
    info->timing.sample_rate = 44100.0;
+#else
+   info->timing.sample_rate = 11025.0;
+#endif
 
    LOGI("[retro_get_system_av_info] %ux%u snd: %i\n", retro_video.screen_render_width, retro_video.screen_render_height, (int) info->timing.sample_rate);
 }
