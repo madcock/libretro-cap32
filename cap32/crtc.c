@@ -1240,6 +1240,9 @@ void crtc_cycle(int repeat_count)
             RendPos = RendStart;
             HorzChar--;
          } else {
+#if defined(SF2000)
+			val = val & ~3;		// osaka's misaligned access fix
+#endif
             RendPos = (uint32_t *)&RendBuff[val];
             int tmp = (uint8_t*)RendStart - (uint8_t*)RendPos;
             HorzPix[48] = (uint8_t)tmp;
