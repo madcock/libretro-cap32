@@ -2038,7 +2038,11 @@ void retro_loop(void)
 
 int capmain (int argc, char **argv)
 {
+#if !defined(SF2000)
    strcpy (chAppPath, "./");
+#else
+   strcpy (chAppPath, "/mnt/sda1/cores/config/");
+#endif
 
    /* retrieve the emulator configuration */
    loadConfiguration();
