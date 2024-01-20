@@ -55,9 +55,10 @@
 #include "dsk/loader.h"
 #include "db/database.h"
 
-char DISKA_NAME[512]="\0";
-char DISKB_NAME[512]="\0";
-char cart_name[512]="\0";
+char diskA_name[RETRO_PATH_MAX]="\0";
+char diskB_name[RETRO_PATH_MAX]="\0";
+char savdif_name[RETRO_PATH_MAX+16]="\0";
+char cart_name[RETRO_PATH_MAX]="\0";
 char loader_buffer[LOADER_MAX_SIZE];
 
 // TIME
@@ -67,7 +68,7 @@ char loader_buffer[LOADER_MAX_SIZE];
 
 // DISK CONTROL
 #include "retro_disk_control.h"
-static dc_storage* dc;
+extern dc_storage* dc;
 
 // LIGHTGUN
 #include "retro_gun.h"
@@ -84,16 +85,13 @@ extern t_button_cfg btnPAD[MAX_PADCFG];
 
 extern void change_model(int val);
 extern int snapshot_load (char *pchFileName);
-extern int attach_disk(char *arv, int drive);
 extern int detach_disk(int drive);
-extern int tape_insert (char *pchFileName);
 extern int cart_start (char *pchFileName);
 extern void enter_gui(void);
 extern int Retro_PollEvent();
 extern void retro_loop(void);
 extern int video_set_palette (void);
-extern int InitOSGLU(void);
-extern int  UnInitOSGLU(void);
+extern void doCleanUp (void);
 extern void emu_reset(void);
 extern void emu_reconfigure(void);
 extern void change_ram(int val);
@@ -847,248 +845,6 @@ void retro_reset(void)
 //*****************************************************************************
 // Disk control
 
-#if !defined(SF2000)
-static int get_image_unit()
-#else
-int get_image_unit()
-#endif
-{
-   int unit = dc->unit;
-   if (dc->index < dc->count)
-   {
-      if (dc_get_image_type(dc->files[dc->index]) == DC_IMAGE_TYPE_TAPE)
-         dc->unit = DC_IMAGE_TYPE_TAPE;
-      else if (dc_get_image_type(dc->files[dc->index]) == DC_IMAGE_TYPE_FLOPPY)
-         dc->unit = DC_IMAGE_TYPE_FLOPPY;
-      else
-         dc->unit = DC_IMAGE_TYPE_FLOPPY;
-   }
-   else
-      unit = DC_IMAGE_TYPE_FLOPPY;
-
-   return unit;
-}
-
-static void retro_insert_image()
-{
-   if(dc->unit == DC_IMAGE_TYPE_TAPE)
-   {
-      int error = tape_insert ((char *) dc->files[dc->index]);
-      if (!error)
-      {
-         strcpy(loader_buffer, LOADER_TAPE_STR);
-         ev_autorun_prepare(loader_buffer);
-         LOGI("[retro_insert_image] Tape (%d) inserted: %s\n", dc->index+1, dc->names[dc->index]);
-         retro_computer_cfg.slot = SLOT_TAP;
-      }
-      else
-      {
-         LOGI("[retro_insert_image] Tape Error (%d): %s\n", error, dc->files[dc->index]);
-      }
-   }
-   else if(dc->unit == DC_IMAGE_TYPE_FLOPPY)
-   {
-      int error = attach_disk((char *)dc->files[dc->index],0);
-      if (error)
-      {
-         retro_message("Error Loading DSK...");
-         LOGI("[retro_insert_image] Disk (%d) Error : %s\n", dc->index+1, dc->files[dc->index]);
-         return;
-      }
-      LOGI("[retro_insert_image] Disk (%d) inserted into drive A : %s\n", dc->index+1, dc->files[dc->index]);
-      retro_computer_cfg.slot = SLOT_DSK;
-   }
-   else
-   {
-      LOGE("[retro_insert_image] unsupported image-type : %u\n", dc->unit);
-   }
-}
-
-#if !defined(SF2000)
-static bool retro_set_eject_state(bool ejected)
-#else
-bool retro_set_eject_state(bool ejected)
-#endif
-{
-   if (dc)
-   {
-      int unit = get_image_unit();
-
-      if (dc->eject_state == ejected)
-         return true;
-      
-      if (ejected && dc->index <= dc->count && dc->files[dc->index] != NULL)
-      {
-         if (unit == DC_IMAGE_TYPE_TAPE)
-         {
-            tape_eject();
-            LOGI("[retro_set_eject_state] Tape (%d/%d) ejected %s\n", dc->index+1, dc->count, dc->names[dc->index]);
-         }
-         else
-         {
-            detach_disk(0);
-            LOGI("[retro_set_eject_state] Disk (%d/%d) ejected: %s\n", dc->index+1, dc->count, dc->names[dc->index]);
-         }
-      }
-      else if (!ejected && dc->index < dc->count && dc->files[dc->index] != NULL)
-      {
-         retro_insert_image();
-      }
-
-      dc->eject_state = ejected;
-      return true;
-   }
-
-   return false;
-}
-
-/* Gets current eject state. The initial state is 'not ejected'. */
-static bool retro_get_eject_state(void)
-{
-   if (dc)
-      return dc->eject_state;
-
-   return true;
-}
-
-#if !defined(SF2000)
-static unsigned retro_get_image_index(void)
-#else
-unsigned retro_get_image_index(void)
-#endif
-{
-   if (dc)
-      return dc->index;
-
-   return 0;
-}
-
-/* Sets image index. Can only be called when disk is ejected.
- * The implementation supports setting "no disk" by using an
- * index >= get_num_images().
- */
-#if !defined(SF2000)
-static bool retro_set_image_index(unsigned index)
-#else
-bool retro_set_image_index(unsigned index)
-#endif
-{
-   // Insert image
-   if (dc)
-   {
-      if (index == dc->index)
-         return true;
-
-      if (dc->replace)
-      {
-         dc->replace = false;
-         index = 0;
-      }
-
-      if (index < dc->count && dc->files[index])
-      {
-         dc->index = index;
-         int unit = get_image_unit();
-         LOGI("[retro_set_image_index] Unit (%d) image (%d/%d) inserted: %s\n", dc->index+1, unit,  dc->count, dc->files[dc->index]);
-         return true;
-      }
-   }
-
-   return false;
-}
-
-#if !defined(SF2000)
-static unsigned retro_get_num_images(void)
-#else
-unsigned retro_get_num_images(void)
-#endif
-{
-   if (dc)
-      return dc->count;
-
-   return 0;
-}
-
-static bool retro_replace_image_index(unsigned index, const struct retro_game_info *info)
-{
-if (dc)
-    {
-        if (info != NULL)
-        {
-            dc_replace_file(dc, index, info->path);
-        }
-        else
-        {
-            dc_remove_file(dc, index);
-        }
-        return true;
-    }
-
-    return false;	
-    
-}
-
-/* Adds a new valid index (get_num_images()) to the internal disk list.
- * This will increment subsequent return values from get_num_images() by 1.
- * This image index cannot be used until a disk image has been set
- * with replace_image_index. */
-static bool retro_add_image_index(void)
-{
-   if (dc)
-   {
-      if (dc->count <= DC_MAX_SIZE)
-      {
-         dc->files[dc->count] = NULL;
-         dc->names[dc->count] = NULL;
-         dc->types[dc->count] = DC_IMAGE_TYPE_NONE;
-         dc->count++;
-         return true;
-      }
-   }
-
-   return false;
-}
-
-static bool retro_get_image_path(unsigned index, char *path, size_t len)
-{
-   if (len < 1)
-      return false;
-
-   if (dc)
-   {
-      if (index < dc->count)
-      {
-         if (!string_is_empty(dc->files[index]))
-         {
-            strlcpy(path, dc->files[index], len);
-            return true;
-         }
-      }
-   }
-
-   return false;
-}
-
-static bool retro_get_image_label(unsigned index, char *label, size_t len)
-{
-   if (len < 1)
-      return false;
-
-   if (dc)
-   {
-      if (index < dc->count)
-      {
-         if (!string_is_empty(dc->names[index]))
-         {
-            strlcpy(label, dc->names[index], len);
-            return true;
-         }
-      }
-   }
-
-   return false;
-}
-
 static struct retro_disk_control_callback disk_interface = {
    retro_set_eject_state,
    retro_get_eject_state,
@@ -1343,8 +1099,8 @@ void computer_load_file() {
       dc->eject_state = false;
       computer_hash_file((char *)dc->files[dc->index]);
 
-      LOGI("[computer_load_file] Disk (%d) inserted into drive A : %s\n", dc->index+1, dc->files[dc->index]);
-      int error = attach_disk((char *)dc->files[dc->index],0);
+      LOGI("[computer_load_file] Disk (%d) inserted into drive A: %s\n", dc->index+1, dc->files[dc->index]);
+      int error = retro_attach_disk((char *)dc->files[dc->index]);
       if (error) {
          retro_message("[computer_load_file] Error Loading DSK...");
          LOGE("[computer_load_file] DSK Error (%d): %s\n", error, (char *)retro_content_filepath);
@@ -1492,11 +1248,14 @@ void retro_init(void)
 
 void retro_deinit(void)
 {
+   // disk diff before clean up
+   detach_disk(0);
+
    free_retro_snd();
    Emu_uninit();
    retro_ui_free();
 
-   UnInitOSGLU();
+   doCleanUp();
 
    // Clean the m3u storage
    if(dc)
@@ -1705,10 +1464,7 @@ bool retro_load_game(const struct retro_game_info *game)
 
    // NOTE: Some third-party retroarch UI do not call retro_set_controller_port_device
    if (lightgun_cfg.gunconfigured == LIGHTGUN_TYPE_UNCONFIGURED)
-   {
-      LOGE("[retro_load_game] missing retro_set_controller_port_device call, forced call: (%d)=%d\n", 0, RETRO_DEVICE_JOYPAD);
       retro_set_controller_port_device_(0, RETRO_DEVICE_JOYPAD);
-   }
 
    return true;
 }

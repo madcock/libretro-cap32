@@ -168,14 +168,12 @@ enum retro_events_action_type
    EVENT_WRITE,
    EVENT_VKEYB,
    EVENT_GUI,
+   EVENT_DISK_PREV,
+   EVENT_DISK_NEXT,
    EVENT_TAPE_ON,
    EVENT_TAPE_OFF,
    EVENT_TAPE_REWIND,
    EVENT_CURSOR_JOY,
-#if defined(SF2000)
-   EVENT_SWAP_MEDIA_PREV,
-   EVENT_SWAP_MEDIA_NEXT,
-#endif
 };
 
 enum retro_event_call_type
